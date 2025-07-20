@@ -195,8 +195,16 @@ try:
     m.save(mapa_minas_path)
     print(f"Mapa interactivo guardado en: {mapa_minas_path}")
 
+    # Add a new directory for graphs
+    GRAPHS_DIR = 'graphs'
+    import os
+    if not os.path.exists(GRAPHS_DIR):
+        os.makedirs(GRAPHS_DIR)
+
     # --- Generar contenido para la Pestaña 1 (Gobernador Provincial) ---
-    tab1_content = f'<div class="plotly-graph-container">{pio.to_html(fig, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
+    graph1_path = f'{GRAPHS_DIR}/gobernador_depto_candidato.html'
+    pio.write_html(fig, file=graph1_path, auto_open=False, full_html=True, include_plotlyjs=True, config={"responsive": True})
+    tab1_content = f'<div class="plotly-graph-container"><iframe src="{graph1_path}" width="100%" height="500px" frameborder="0"></iframe></div>'
 
     # Mapeo de candidatos a imágenes para Gobernador
     candidate_images_gobernador = {
@@ -220,7 +228,9 @@ try:
         '''
     gobernador_images_html += '</div>';
     tab1_content += gobernador_images_html
-    tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig2, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
+    graph2_path = f'{GRAPHS_DIR}/gobernador_total_zona_norte.html'
+    pio.write_html(fig2, file=graph2_path, auto_open=False, full_html=True, include_plotlyjs=True, config={"responsive": True})
+    tab1_content += f'<div class="plotly-graph-container"><iframe src="{graph2_path}" width="100%" height="500px" frameborder="0"></iframe></div>'
     tab1_content += '<h3 align="center" style="font-size:16px; color: #0056b3;"><b>Votos por Departamento en la Zona Norte Neuquino</b></h3>'
     tab1_content += '<div style="text-align: center;"><iframe src="mapa_minas.html" width="100%" height="400px" frameborder="0" style="display: inline-block;"></iframe></div>'
 
@@ -254,7 +264,9 @@ try:
                                                textfont=dict(color='black', size=12))
 
                     fig_locality.update_layout(**plotly_layout_config)
-                    tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
+                    locality_graph_path = f'{GRAPHS_DIR}/localidad_{localidad_name.replace(" ", "_")}.html'
+                    pio.write_html(fig_locality, file=locality_graph_path, auto_open=False, full_html=True, include_plotlyjs=True, config={"responsive": True})
+                    tab1_content += f'<div class="plotly-graph-container"><iframe src="{locality_graph_path}" width="100%" height="500px" frameborder="0"></iframe></div>'
                 else:
                     tab1_content += f"<p>Advertencia: No hay datos de votos válidos para {localidad_name}.</p>"
                     # print(f"Advertencia: No hay datos de votos válidos para {localidad_name}.") # Comentado para evitar spam en consola
@@ -297,7 +309,9 @@ try:
 
             fig_presidente.update_layout(**plotly_layout_config)
 
-            tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
+            president_graph_path = f'{GRAPHS_DIR}/presidente_depto.html'
+            pio.write_html(fig_presidente, file=president_graph_path, auto_open=False, full_html=True, include_plotlyjs=True, config={"responsive": True})
+            tab_presidente_content = f'<div class="plotly-graph-container"><iframe src="{president_graph_path}" width="100%" height="500px" frameborder="0"></iframe></div>'
 
             candidate_images_presidente = {
                 'Sergio Massa': 'sergio massa.png',
