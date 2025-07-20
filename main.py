@@ -25,7 +25,6 @@ try:
 
     departamento_data = {}
     for depto in df_long['Departamento'].unique():
-        # Eliminada la barra invertida innecesaria
         total_votos = df_total_votos_depto[df_total_votos_depto['Departamento'] == depto]['TotalVotosDepartamento'].iloc[0]
         votos_candidatos = df_long[df_long['Departamento'] == depto].set_index('Candidato')['Votos'].to_dict()
         departamento_data[depto] = {
@@ -60,7 +59,8 @@ try:
                  color_discrete_sequence=px.colors.qualitative.D3)
     fig.update_traces(textposition='outside', textangle=0)
     fig.update_xaxes(tickangle=90)
-    fig.update_layout(autosize=True, height=600)
+    # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
+    fig.update_layout(autosize=True)
 
     df_total_votos = df.set_index('Candidato').sum(axis=1).reset_index(name='TotalVotos')
     df_total_votos.rename(columns={0: 'Candidato'}, inplace=True)
@@ -75,7 +75,8 @@ try:
                   opacity=0.7,
                   color_discrete_sequence=px.colors.qualitative.D3)
     fig2.update_traces(textposition='outside', textangle=0)
-    fig2.update_layout(autosize=True, height=600)
+    # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
+    fig2.update_layout(autosize=True)
 
     # --- Generar el mapa con Folium ---
     map_center = [-37.37, -70.56]
@@ -213,7 +214,8 @@ try:
                                       opacity=0.7,
                                       color_discrete_sequence=px.colors.qualitative.D3)
                 fig_locality.update_traces(textposition='outside', textangle=0)
-                fig_locality.update_layout(autosize=True, height=600)
+                # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
+                fig_locality.update_layout(autosize=True)
                 tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
                 print(f"Gráfico de {localidad_name} generado exitosamente.")
             else:
@@ -246,7 +248,8 @@ try:
                                 color_discrete_sequence=px.colors.qualitative.D3)
         fig_presidente.update_traces(textposition='outside', textangle=0)
         fig_presidente.update_xaxes(tickangle=90)
-        fig_presidente.update_layout(autosize=True, height=600)
+        # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
+        fig_presidente.update_layout(autosize=True)
 
         tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
 
@@ -458,7 +461,7 @@ try:
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid rgba(255, 255, 255, 0.5);
+            border: 3px solid #007bff; /* Usando el azul principal */
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: transform 0.2s ease-in-out;
         }}
@@ -550,15 +553,3 @@ try:
 
 </body>
 </html>
-"""
-
-    with open(output_html_path, 'w', encoding='utf-8') as f:
-        f.write(full_html_content)
-
-    print("Gráficos generados exitosamente en: {}".format(output_html_path))
-    print("Mapa de Minas generado exitosamente en: {}".format(mapa_minas_path))
-
-except FileNotFoundError:
-    print("Error: El archivo de departamentos no se encontró en la ruta: {}".format(csv_file_path))
-except Exception as e:
-    print("Ocurrió un error: {}".format(e))
