@@ -461,7 +461,8 @@ try:
             flex-direction: column;
             align-items: center;
             text-align: center;
-            width: 120px;
+            width: 100%; /* Permite que el item ocupe todo el ancho disponible */
+            max-width: 120px; /* Pero no más de 120px */
         }}
         .candidate-image {{
             width: 100px;
