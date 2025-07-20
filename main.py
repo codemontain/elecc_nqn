@@ -6,13 +6,17 @@ import folium
 import branca.colormap as cm
 import re
 
-# Ruta al archivo CSV
+# Rutas a los archivos CSV
 csv_file_path = 'Datos_Norte_NQN - departamentos.csv'
 output_html_path = 'grafico_elecciones.html'
 mapa_minas_path = 'mapa_minas.html'
 localidades_csv_file_path = 'Datos_Norte_NQN - localidades.csv'
 presidente_csv_file_path = 'Datos_Norte_NQN - Copia de presidente.csv'
 
+# Asegúrate de que estos directorios existan en el mismo lugar que tu script Python
+# o ajusta las rutas según sea necesario.
+MAPS_DIR = 'mapas'
+IMAGES_DIR = 'image'
 
 try:
     # --- Procesamiento de datos de Departamentos ---
@@ -25,7 +29,12 @@ try:
 
     departamento_data = {}
     for depto in df_long['Departamento'].unique():
-        total_votos = df_total_votos_depto[df_total_votos_depto['Departamento'] == depto]['TotalVotosDepartamento'].iloc[0]
+        # Asegurarse de que el departamento existe en df_total_votos_depto antes de acceder
+        if depto in df_total_votos_depto['Departamento'].values:
+            total_votos = \
+            df_total_votos_depto[df_total_votos_depto['Departamento'] == depto]['TotalVotosDepartamento'].iloc[0]
+        else:
+            total_votos = 0  # Si el departamento no tiene votos, asigna 0
         votos_candidatos = df_long[df_long['Departamento'] == depto].set_index('Candidato')['Votos'].to_dict()
         departamento_data[depto] = {
             'TotalVotos': total_votos,
@@ -46,37 +55,46 @@ try:
         return content
 
 
+    # Configuración común para los gráficos Plotly (leyenda, responsividad y altura mínima)
+    # AJUSTE CLAVE AQUÍ: Reducimos el margen inferior (b) para eliminar espacio en blanco.
+    plotly_layout_config = dict(
+        autosize=True,
+        height=500,  # Altura predeterminada para dar espacio al texto
+        margin=dict(l=50, r=50, t=50, b=100),  # <--- MARGEN INFERIOR REDUCIDO (de 250 a 100)
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),  # Leyenda un poco más arriba
+        xaxis=dict(tickangle=0, tickfont=dict(size=6), automargin=True)
+    )
+
+    # --- Gráfico 1: Resultados Electorales por Departamento y Candidato (Gobernador Provincial) ---
     fig = px.bar(df_long,
                  x='Departamento',
                  y='Votos',
                  color='Candidato',
                  barmode='group',
-                 title='Resultados Electorales por Departamento y Candidato',
-                 labels={'Votos': 'Cantidad de Votos', 'Departamento': 'Departamento'},
+                 title='Resultados Electorales por Departamento y Candidato (Gobernador Provincial)',
+                 labels={'Votos': 'Cantidad de Votos', 'Departamento': ''},
                  hover_data={'Candidato': True, 'Departamento': True, 'Votos': True},
                  text='Votos',
                  opacity=0.7,
                  color_discrete_sequence=px.colors.qualitative.D3)
-    fig.update_traces(textposition='outside', textangle=0)
-    fig.update_xaxes(tickangle=90)
-    # Incluido autosize=True y configuración de leyenda para responsividad
-    fig.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+    fig.update_traces(textposition='outside', textangle=0, textfont=dict(color='black', size=12))
+    fig.update_layout(**plotly_layout_config)
 
     df_total_votos = df.set_index('Candidato').sum(axis=1).reset_index(name='TotalVotos')
     df_total_votos.rename(columns={0: 'Candidato'}, inplace=True)
 
+    # --- Gráfico 2: Resultados Electorales Totales en la Zona Norte (Gobernador Provincial) ---
     fig2 = px.bar(df_total_votos,
                   x='Candidato',
                   y='TotalVotos',
                   color='Candidato',
-                  title='Resultados electorales en la zona norte',
-                  labels={'TotalVotos': 'Cantidad de Votos', 'Candidato': 'Candidato'},
+                  title='Resultados Electorales Totales en la Zona Norte (Gobernador Provincial)',
+                  labels={'TotalVotos': 'Cantidad de Votos', 'Candidato': ''},
                   text='TotalVotos',
                   opacity=0.7,
                   color_discrete_sequence=px.colors.qualitative.D3)
-    fig2.update_traces(textposition='outside', textangle=0)
-    # Incluido autosize=True y configuración de leyenda para responsividad
-    fig2.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+    fig2.update_traces(textposition='outside', textangle=0, textfont=dict(color='black', size=12))
+    fig2.update_layout(**plotly_layout_config)
 
     # --- Generar el mapa con Folium ---
     map_center = [-37.37, -70.56]
@@ -84,14 +102,25 @@ try:
 
     geojson_files = [
         ("minasg.geojson", "Minas"),
-        ("chosmalal.geojson", "Chos malal"),
+        ("chosmalal.geojson", "Chos Malal"),
         ("pehuenches.geojson", "Pehuenches"),
         ("ñorquin.geojson", "Ñorquin"),
         ("loncopue.geojson", "Loncopue")
     ]
 
-    min_votos = min(data['TotalVotos'] for data in departamento_data.values())
-    max_votos = max(data['TotalVotos'] for data in departamento_data.values())
+    # Calcular min/max votos para la leyenda del mapa
+    if departamento_data:
+        # Filtrar solo los departamentos que realmente tienen votos para min/max
+        votos_existentes = [data['TotalVotos'] for data in departamento_data.values() if data['TotalVotos'] is not None]
+        if votos_existentes:  # Solo si hay votos reales
+            min_votos = min(votos_existentes)
+            max_votos = max(votos_existentes)
+        else:
+            min_votos = 0
+            max_votos = 1  # Por si no hay datos de votos
+    else:
+        min_votos = 0
+        max_votos = 1
 
     colormap = cm.LinearColormap(colors=['#f0f0f0', '#e31a1c', '#800026'],
                                  index=[min_votos, max_votos],
@@ -99,7 +128,9 @@ try:
 
 
     def style_function(feature):
-        depto_name = feature['properties']['nombre'].capitalize()
+        depto_name_raw = feature['properties'].get('nombre', '').strip()
+        depto_name = depto_name_raw.capitalize()
+
         total_votos = departamento_data.get(depto_name, {}).get('TotalVotos', 0)
         return {
             'fillColor': colormap(total_votos),
@@ -110,50 +141,62 @@ try:
 
 
     for geojson_file, depto_name in geojson_files:
-        geojson_path = f'/Users/macbookair/Desktop/norte_ele/mapas/{geojson_file}'
-        popup_content = create_popup_content(depto_name)
-        folium.GeoJson(
-            geojson_path,
-            style_function=style_function,
-            popup=folium.Popup(popup_content, max_width=300)
-        ).add_to(m)
+        geojson_path = f'{MAPS_DIR}/{geojson_file}'
+        try:
+            popup_content = create_popup_content(depto_name)
+            folium.GeoJson(
+                geojson_path,
+                style_function=style_function,
+                popup=folium.Popup(popup_content, max_width=300)
+            ).add_to(m)
+        except FileNotFoundError:
+            print(f"Advertencia: Archivo GeoJSON no encontrado: {geojson_path}. No se añadirá al mapa.")
+        except Exception as e:
+            print(f"Error al procesar {geojson_file}: {e}")
 
-    m.fit_bounds(m.get_bounds())
+    try:
+        m.fit_bounds(m.get_bounds())
+    except Exception as e:
+        print(
+            f"Advertencia: No se pudieron ajustar los límites del mapa, puede que no haya GeoJSONs válidos cargados. Error: {e}")
 
     # Construir el HTML de la leyenda manualmente
     legend_html = f'''
     <div style="position: fixed;
-                bottom: 50%;
+                bottom: 20px;
                 right: 10px;
-                transform: translateY(50%);
                 z-index:9999; font-size:14px;
-                background-color:rgba(255, 255, 255, 0.8);
+                background-color:rgba(255, 255, 255, 0.9);
                 padding: 10px;
                 border: 1px solid #ced4da;
                 border-radius: 5px;
-                height: 100px;
+                height: 120px;
                 width: 100px;
                 overflow: hidden;
                 color: #343a40;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
                 ">
       &nbsp; <b>Votos Totales</b> <br>
-      &nbsp; <i style="background:linear-gradient(to top, #800026, #e31a1c, #f0f0f0);
+      <div style="display: flex; align-items: center; height: 100%;">
+        <i style="background:linear-gradient(to top, #800026, #e31a1c, #f0f0f0);
                     display:inline-block; width:20px; height:80px;
-                    vertical-align:middle;"></i>
-      <span style="vertical-align:middle;">
-        {max_votos:.0f}<br>
-        {(min_votos + max_votos) / 2:.0f}<br>
-        {min_votos:.0f}
-      </span>
+                    vertical-align:middle; margin-right: 5px;"></i>
+        <span style="vertical-align:middle; line-height: 1.2;">
+          <b>{max_votos:.0f}</b><br>
+          <span style="font-size: 0.8em;">{(min_votos + max_votos) / 2:.0f}</span><br>
+          <b>{min_votos:.0f}</b>
+        </span>
+      </div>
     </div>
     '''
 
     m.get_root().html.add_child(folium.Element(legend_html))
 
     m.save(mapa_minas_path)
+    print(f"Mapa interactivo guardado en: {mapa_minas_path}")
 
     # --- Generar contenido para la Pestaña 1 (Gobernador Provincial) ---
-    tab1_content = f'<div class="plotly-graph-container">{pio.to_html(fig, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
+    tab1_content = f'<div class="plotly-graph-container">{pio.to_html(fig, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
 
     # Mapeo de candidatos a imágenes para Gobernador
     candidate_images_gobernador = {
@@ -168,7 +211,7 @@ try:
     # Generar HTML para las imágenes de los candidatos a Gobernador
     gobernador_images_html = '<div class="candidate-images-container">';
     for candidate, image_filename in candidate_images_gobernador.items():
-        image_path = f'image/{image_filename}'
+        image_path = f'{IMAGES_DIR}/{image_filename}'
         gobernador_images_html += f'''
             <div class="candidate-image-item">
                 <img src="{image_path}" alt="{candidate}" class="candidate-image">
@@ -177,8 +220,8 @@ try:
         '''
     gobernador_images_html += '</div>';
     tab1_content += gobernador_images_html
-    tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig2, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
-    tab1_content += '<h3 align="center" style="font-size:16px; color: #0056b3;"><b>Votos por departamento Norte Neuquino</b></h3>'
+    tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig2, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
+    tab1_content += '<h3 align="center" style="font-size:16px; color: #0056b3;"><b>Votos por Departamento en la Zona Norte Neuquino</b></h3>'
     tab1_content += '<div style="text-align: center;"><iframe src="mapa_minas.html" width="100%" height="400px" frameborder="0" style="display: inline-block;"></iframe></div>'
 
     # --- Generar gráficos por localidad ---
@@ -188,97 +231,98 @@ try:
         for col in voto_cols:
             df_localidades[col] = df_localidades[col].replace('-', '0').astype(int)
 
-        all_localities = [
-            "Huinganco", "Andacollo", "Los Miches", "Villa del Nahueve", "Las Ovejas",
-            "Manzano Amargo", "Varvarco-Invernada Vieja", "Guañacos", "Colipilli", "El Huecu",
-            "El Cholar", "Taquimilán", "Naunauco", "Tralaitue", "Caviahue-Copahue",
-            "Coyuco-Cochico", "Cajón del Curí Leuvú", "Villa Curí Leuvú", "Chapua",
-            "Chos Malal Fuera de Radio", "Chos Malal", "Chorriaca", "Huncal", "Quintuco",
-            "Huarenchenque", "Cajón De Almaza", "Loncopué", "Buta Ranquil", "Barrancas",
-            "Huantraico", "Rincón De Los Sauces", "Octavio Pico"
-        ]
+        all_localities_from_data = df_localidades['Localidad'].unique().tolist()
 
-        for localidad_name in all_localities:
+        tab1_content += '<hr><h2 style="color: #0056b3;">Resultados Electorales por Localidad (Gobernador Provincial)</h2>'
+        for localidad_name in all_localities_from_data:
             df_current_locality = df_localidades[df_localidades['Localidad'] == localidad_name]
             if not df_current_locality.empty:
                 df_current_locality_long = df_current_locality.melt(id_vars=['Localidad', 'Departamento'],
                                                                     var_name='Candidato',
                                                                     value_name='Votos')
-                fig_locality = px.bar(df_current_locality_long,
-                                      x='Candidato',
-                                      y='Votos',
-                                      color='Candidato',
-                                      title=f'Resultados Electorales en {localidad_name}',
-                                      labels={'Votos': 'Cantidad de Votos', 'Candidato': 'Candidato'},
-                                      text='Votos',
-                                      opacity=0.7,
-                                      color_discrete_sequence=px.colors.qualitative.D3)
-                fig_locality.update_traces(textposition='outside', textangle=0)
-                # Incluido autosize=True y configuración de leyenda para responsividad
-                fig_locality.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
-                tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
-                print(f"Gráfico de {localidad_name} generado exitosamente.")
+                if not df_current_locality_long.empty and df_current_locality_long['Votos'].sum() > 0:
+                    fig_locality = px.bar(df_current_locality_long,
+                                          x='Candidato',
+                                          y='Votos',
+                                          color='Candidato',
+                                          title=f'Resultados Electorales en {localidad_name}',
+                                          labels={'Votos': 'Cantidad de Votos', 'Candidato': ''},
+                                          text='Votos',
+                                          opacity=0.7,
+                                          color_discrete_sequence=px.colors.qualitative.D3)
+                    fig_locality.update_traces(textposition='outside', textangle=0,
+                                               textfont=dict(color='black', size=12))
+
+                    fig_locality.update_layout(**plotly_layout_config)
+                    tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
+                else:
+                    tab1_content += f"<p>Advertencia: No hay datos de votos válidos para {localidad_name}.</p>"
+                    # print(f"Advertencia: No hay datos de votos válidos para {localidad_name}.") # Comentado para evitar spam en consola
             else:
-                print(f"Localidad {localidad_name} no encontrada en el archivo de localidades.")
+                print(f"Advertencia: Datos para la localidad '{localidad_name}' no encontrados en el archivo.")
 
     except FileNotFoundError:
+        tab1_content += "<p>Error: El archivo de datos de localidades no se encontró. No se pudieron generar los gráficos por localidad.</p>"
         print("Error: El archivo de localidades no se encontró en la ruta: {}".format(localidades_csv_file_path))
     except Exception as e:
+        tab1_content += f"<p>Ocurrió un error al procesar el archivo de localidades: {e}</p>"
         print("Ocurrió un error al procesar el archivo de localidades: {}".format(e))
 
     # --- Procesamiento de datos de Presidente y generación de gráfico ---
     try:
         df_presidente = pd.read_csv(presidente_csv_file_path, decimal=',', thousands='.')
-        # Seleccionar solo las columnas de interés para los candidatos
         candidatos_presidente = ['Sergio Massa', 'Javier Milei', 'Patricia Bullrich', 'Juan Schiaretti',
                                  'Myriam Bregman']
-        df_presidente_long = df_presidente.melt(id_vars=['Departamento'], value_vars=candidatos_presidente,
-                                                var_name='Candidato', value_name='Votos')
+        existing_president_cols = [col for col in candidatos_presidente if col in df_presidente.columns]
+        if not existing_president_cols:
+            tab_presidente_content = "<p>Advertencia: No se encontraron datos de candidatos presidenciales en el archivo.</p>"
+            print(
+                "Advertencia: Ninguna columna de candidato presidencial reconocida encontrada en el CSV de presidente.")
+        else:
+            df_presidente_long = df_presidente.melt(id_vars=['Departamento'], value_vars=existing_president_cols,
+                                                    var_name='Candidato', value_name='Votos')
 
-        fig_presidente = px.bar(df_presidente_long,
-                                x='Departamento',
-                                y='Votos',
-                                color='Candidato',
-                                barmode='group',
-                                title='Resultados Electorales Presidenciales por Departamento',
-                                labels={'Votos': 'Cantidad de Votos', 'Departamento': 'Departamento'},
-                                hover_data={'Candidato': True, 'Departamento': True, 'Votos': True},
-                                text='Votos',
-                                opacity=0.7,
-                                color_discrete_sequence=px.colors.qualitative.D3)
-        fig_presidente.update_traces(textposition='outside', textangle=0)
-        fig_presidente.update_xaxes(tickangle=90)
-        # Incluido autosize=True y configuración de leyenda para responsividad
-        fig_presidente.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+            fig_presidente = px.bar(df_presidente_long,
+                                    x='Departamento',
+                                    y='Votos',
+                                    color='Candidato',
+                                    barmode='group',
+                                    title='Resultados Electorales Presidenciales por Departamento',
+                                    labels={'Votos': 'Cantidad de Votos', 'Departamento': ''},
+                                    hover_data={'Candidato': True, 'Departamento': True, 'Votos': True},
+                                    text='Votos',
+                                    opacity=0.7,
+                                    color_discrete_sequence=px.colors.qualitative.D3)
+            fig_presidente.update_traces(textposition='outside', textangle=0, textfont=dict(color='black', size=12))
 
-        tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
+            fig_presidente.update_layout(**plotly_layout_config)
 
-        # Mapeo de candidatos a imágenes
-        candidate_images = {
-            'Sergio Massa': 'sergio massa.png',
-            'Javier Milei': 'javier milei.png',
-            'Patricia Bullrich': 'patricia.png',
-            'Juan Schiaretti': 'juan.png',
-            'Myriam Bregman': 'miryam.png'
-        }
+            tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs=False, config={"responsive": True})}</div>'
 
-        # Generar HTML para las imágenes de los candidatos
-        images_html = '<div class="candidate-images-container">';
-        for candidate in candidatos_presidente:
-            image_filename = candidate_images.get(candidate)
-            if image_filename:
-                image_path = f'image/{image_filename}'
-                images_html += f'''
-                <div class="candidate-image-item">
-                    <img src="{image_path}" alt="{candidate}" class="candidate-image">
-                    <p class="candidate-name">{candidate}</p>
-                </div>
-                '''
-        images_html += '</div>';
-        tab_presidente_content += images_html
+            candidate_images_presidente = {
+                'Sergio Massa': 'sergio massa.png',
+                'Javier Milei': 'javier milei.png',
+                'Patricia Bullrich': 'patricia.png',
+                'Juan Schiaretti': 'juan.png',
+                'Myriam Bregman': 'miryam.png'
+            }
+
+            presidente_images_html = '<div class="candidate-images-container">';
+            for candidate in candidatos_presidente:
+                image_filename = candidate_images_presidente.get(candidate)
+                if image_filename:
+                    image_path = f'{IMAGES_DIR}/{image_filename}'
+                    presidente_images_html += f'''
+                    <div class="candidate-image-item">
+                        <img src="{image_path}" alt="{candidate}" class="candidate-image">
+                        <p class="candidate-name">{candidate}</p>
+                    </div>
+                    '''
+            presidente_images_html += '</div>';
+            tab_presidente_content += presidente_images_html
 
     except FileNotFoundError:
-        tab_presidente_content = "<p>Error: El archivo de datos de presidente no se encontró.</p>"
+        tab_presidente_content = "<p>Error: El archivo de datos de presidente no se encontró. No se pudieron generar los gráficos presidenciales.</p>"
         print("Error: El archivo de presidente no se encontró en la ruta: {}".format(presidente_csv_file_path))
     except Exception as e:
         tab_presidente_content = f"<p>Ocurrió un error al procesar los datos de presidente: {e}</p>"
@@ -286,52 +330,60 @@ try:
 
     # --- Resumen de resultados para Rolando Figueroa ---
     try:
-        df_localidades = pd.read_csv(localidades_csv_file_path)
-        voto_cols = [col for col in df_localidades.columns if col not in ['Localidad', 'Departamento']]
-        for col in voto_cols:
-            df_localidades[col] = df_localidades[col].replace('-', '0').astype(int)
+        df_localidades_summary = pd.read_csv(localidades_csv_file_path)
+        voto_cols_summary = [col for col in df_localidades_summary.columns if col not in ['Localidad', 'Departamento']]
+        for col in voto_cols_summary:
+            df_localidades_summary[col] = df_localidades_summary[col].replace('-', '0').astype(int)
 
         localidades_ganadas_rf = []
         localidades_perdidas_rf = []
 
-        for index, row in df_localidades.iterrows():
-            localidad = row['Localidad']
-            votos_rf = row['Rolando Figueroa']
+        if 'Rolando Figueroa' in voto_cols_summary:
+            for index, row in df_localidades_summary.iterrows():
+                localidad = row['Localidad']
+                votos_rf = row['Rolando Figueroa']
 
-            max_votos_localidad = 0
-            ganador_localidad = ""
-            for candidato in voto_cols:
-                if row[candidato] > max_votos_localidad:
-                    max_votos_localidad = row[candidato]
-                    ganador_localidad = candidato
+                max_votos_localidad = 0
+                ganador_localidad = ""
+                # Primero, encontrar el valor máximo de votos en la localidad
+                for candidato in voto_cols_summary:
+                    if row[candidato] > max_votos_localidad:
+                        max_votos_localidad = row[candidato]
+                        ganador_localidad = candidato
 
-            if ganador_localidad == 'Rolando Figueroa':
-                localidades_ganadas_rf.append(localidad)
+                # Ahora, determinar si Rolando Figueroa ganó o perdió
+                # Consideramos que gana si tiene el máximo de votos y no es 0 (para evitar "ganar" con 0 votos)
+                if votos_rf == max_votos_localidad and votos_rf > 0:
+                    localidades_ganadas_rf.append(localidad)
+                else:
+                    localidades_perdidas_rf.append(localidad)
+
+            tab1_content += '<hr><h2 style="color: #0056b3;">Resumen de Resultados para Rolando Figueroa por Localidad</h2>'
+            tab1_content += '<h3 style="color: #0056b3;">Localidades donde Rolando Figueroa ganó:</h3>'
+            if localidades_ganadas_rf:
+                tab1_content += '<ul style="color: #343a40;">'
+                for loc in sorted(localidades_ganadas_rf):
+                    tab1_content += f'<li>{loc}</li>'
+                tab1_content += '</ul>'
             else:
-                localidades_perdidas_rf.append(localidad)
+                tab1_content += '<p style="color: #343a40;">No ganó en ninguna localidad.</p>'
 
-        tab1_content += '<hr><h2 style="color: #0056b3;">Resumen de Resultados para Rolando Figueroa por Localidad</h2>'
-        tab1_content += '<h3 style="color: #0056b3;">Localidades donde Rolando Figueroa ganó:</h3>'
-        if localidades_ganadas_rf:
-            tab1_content += '<ul style="color: #343a40;">'
-            for loc in localidades_ganadas_rf:
-                tab1_content += f'<li>{loc}</li>'
-            tab1_content += '</ul>'
+            tab1_content += '<h3 style="color: #0056b3;">Localidades donde Rolando Figueroa perdió:</h3>'
+            if localidades_perdidas_rf:
+                tab1_content += '<ul style="color: #343a40;">'
+                for loc in sorted(localidades_perdidas_rf):
+                    tab1_content += f'<li>{loc}</li>'
+                tab1_content += '</ul>'
+            else:
+                tab1_content += '<p style="color: #343a40;">Ganó en todas las localidades donde tuvo votos.</p>'
         else:
-            tab1_content += '<p style="color: #343a40;">No ganó en ninguna localidad.</p>'
-
-        tab1_content += '<h3 style="color: #0056b3;">Localidades donde Rolando Figueroa perdió:</h3>'
-        if localidades_perdidas_rf:
-            tab1_content += '<ul style="color: #343a40;">'
-            for loc in localidades_perdidas_rf:
-                tab1_content += f'<li>{loc}</li>'
-            tab1_content += '</ul>'
-        else:
-            tab1_content += '<p style="color: #343a40;">Ganó en todas las localidades.</p>'
+            tab1_content += '<p style="color: #dc3545;">Advertencia: La columna "Rolando Figueroa" no se encontró en el archivo de localidades para el resumen.</p>'
 
     except FileNotFoundError:
+        tab1_content += "<p>Error: El archivo de localidades no se encontró para generar el resumen de Rolando Figueroa.</p>"
         print("Error: El archivo de localidades no se encontró para el resumen: {}".format(localidades_csv_file_path))
     except Exception as e:
+        tab1_content += f"<p>Ocurrió un error al generar el resumen de Rolando Figueroa: {e}</p>"
         print("Ocurrió un error al generar el resumen: {}".format(e))
 
     # --- Estructura HTML con pestañas ---
@@ -343,6 +395,7 @@ try:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
     <style>
         body {{
             font-family: 'Inter', sans-serif;
@@ -370,6 +423,7 @@ try:
             border-bottom: 2px solid #dee2e6;
             background-color: #f8f9fa;
             padding: 0 20px;
+            flex-wrap: wrap;
         }}
         .tab-container button {{
             background-color: transparent;
@@ -383,6 +437,8 @@ try:
             transition: all 0.3s ease;
             border-bottom: 3px solid transparent;
             margin-right: 5px;
+            flex-grow: 1;
+            min-width: fit-content;
         }}
         .tab-container button:hover {{
             background-color: #e2e6ea;
@@ -393,7 +449,7 @@ try:
             color: #007bff;
             border-bottom: 3px solid #007bff;
             border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
+            border-top-right-radius: 88px;
             margin-bottom: -2px;
         }}
         .tabcontent {{
@@ -415,17 +471,17 @@ try:
             padding: 5px;
             box-sizing: border-box;
             color: #343a40;
+            min-height: 500px;
         }}
-        /* Nuevas reglas para asegurar la responsividad de los gráficos Plotly */
         .plotly-graph-container .js-plotly-plot {{
             width: 100% !important;
-            height: auto !important;
+            height: 100% !important;
             min-width: unset !important;
             min-height: unset !important;
         }}
         .plotly-graph-container .plotly .main-svg {{
             width: 100% !important;
-            height: auto !important;
+            height: 100% !important;
         }}
         .plotly-graph-container .modebar-container {{
             background-color: #f8f9fa;
@@ -513,6 +569,7 @@ try:
                 border-radius: 0;
                 box-shadow: none;
                 padding: 5px;
+                min-height: 350px;
             }}
             h2 {{
                 padding: 15px 0;
@@ -526,8 +583,8 @@ try:
 
 <div class="main-content-wrapper">
     <div class="tab-container">
-        <button class="tablinks active" onclick="openTab(event, 'Gobernador')">Resultados elecciones 2023-Gobernador Provincial</button>
-        <button class="tablinks" onclick="openTab(event, 'Presidente')">Resultados elecciones Presidente</button>
+        <button class="tablinks active" onclick="openTab(event, 'Gobernador')">Resultados Elecciones 2023 - Gobernador Provincial</button>
+        <button class="tablinks" onclick="openTab(event, 'Presidente')">Resultados Elecciones Presidente</button>
     </div>
 
     <div id="Gobernador" class="tabcontent" style="display: block;">
@@ -553,31 +610,29 @@ try:
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.className += " active";
 
-        // Trigger resize for Plotly graphs in the active tab
-        // Give a small delay to ensure the tab is fully visible before relayout
         setTimeout(() => {{
             const activeTabContent = document.getElementById(tabName);
-            // Selecciona los divs que Plotly usa para renderizar los gráficos
             const plotlyDivs = activeTabContent.querySelectorAll('.plotly-graph-container > div');
+
             plotlyDivs.forEach(div => {{
-                // Verifica si el div es realmente un gráfico de Plotly y si Plotly está cargado
-                if (div.data && typeof Plotly !== 'undefined' && Plotly.relayout) {{
+                if (typeof Plotly !== 'undefined' && div.data) {{
                     Plotly.relayout(div, {{
                         autosize: true,
+                        height: 500,
+                        margin: {{b: 100}}, // Asegurar margen inferior en el relayout (AJUSTADO AQUÍ TAMBIÉN)
                         legend: {{
                             orientation: "h",
                             yanchor: "bottom",
-                            y: -0.2,
+                            y: -0.2, // Leyenda un poco más arriba (AJUSTADO AQUÍ TAMBIÉN)
                             xanchor: "center",
                             x: 0.5
-                        }}
-                    }}); // Forzar el redimensionamiento con autosize y la leyenda abajo
-                }} else {{
-                    // Fallback a un evento de redimensionamiento general si Plotly no se detecta
-                    window.dispatchEvent(new Event('resize'));
+                        }},
+                        xaxis: {{tickangle: 0, tickfont: {{size: 6}}}}
+                    }}).catch(err => console.error("Error al redimensionar gráfico Plotly:", err));
                 }}
             }});
-        }}, 50); // Pequeño retraso para asegurar que la pestaña esté visible
+            window.dispatchEvent(new Event('resize'));
+        }}, 150);
     }}
 
     document.addEventListener('DOMContentLoaded', (event) => {{
@@ -590,3 +645,18 @@ try:
 
 </body>
 </html>
+"""
+    # Guardar el archivo HTML final
+    with open(output_html_path, 'w', encoding='utf-8') as f:
+        f.write(full_html_content)
+    print(f"Informe HTML generado exitosamente en: {output_html_path}")
+
+except FileNotFoundError as e:
+    print(
+        f"Error: Uno de los archivos CSV no se encontró: {e}. Asegúrate de que los archivos estén en la ruta correcta.")
+except pd.errors.EmptyDataError as e:
+    print(f"Error: Uno de los archivos CSV está vacío: {e}. Asegúrate de que los archivos contengan datos.")
+except pd.errors.ParserError as e:
+    print(f"Error: Problema al analizar uno de los archivos CSV: {e}. Revisa el formato del archivo.")
+except Exception as e:
+    print(f"Ocurrió un error inesperado durante la ejecución del script: {e}")
