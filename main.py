@@ -562,7 +562,16 @@ try:
             plotlyDivs.forEach(div => {{
                 // Verifica si el div es realmente un gráfico de Plotly y si Plotly está cargado
                 if (div.data && typeof Plotly !== 'undefined' && Plotly.relayout) {{
-                    Plotly.relayout(div, {{autosize: true}}); // Forzar el redimensionamiento con autosize
+                    Plotly.relayout(div, {{
+                        autosize: true,
+                        legend: {{
+                            orientation: "h",
+                            yanchor: "bottom",
+                            y: -0.2,
+                            xanchor: "center",
+                            x: 0.5
+                        }}
+                    }}); // Forzar el redimensionamiento con autosize y la leyenda abajo
                 }} else {{
                     // Fallback a un evento de redimensionamiento general si Plotly no se detecta
                     window.dispatchEvent(new Event('resize'));
