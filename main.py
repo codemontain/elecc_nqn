@@ -59,7 +59,6 @@ try:
                  color_discrete_sequence=px.colors.qualitative.D3)
     fig.update_traces(textposition='outside', textangle=0)
     fig.update_xaxes(tickangle=90)
-    # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
     fig.update_layout(autosize=True)
 
     df_total_votos = df.set_index('Candidato').sum(axis=1).reset_index(name='TotalVotos')
@@ -75,7 +74,6 @@ try:
                   opacity=0.7,
                   color_discrete_sequence=px.colors.qualitative.D3)
     fig2.update_traces(textposition='outside', textangle=0)
-    # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
     fig2.update_layout(autosize=True)
 
     # --- Generar el mapa con Folium ---
@@ -214,7 +212,6 @@ try:
                                       opacity=0.7,
                                       color_discrete_sequence=px.colors.qualitative.D3)
                 fig_locality.update_traces(textposition='outside', textangle=0)
-                # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
                 fig_locality.update_layout(autosize=True)
                 tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
                 print(f"Gráfico de {localidad_name} generado exitosamente.")
@@ -248,7 +245,6 @@ try:
                                 color_discrete_sequence=px.colors.qualitative.D3)
         fig_presidente.update_traces(textposition='outside', textangle=0)
         fig_presidente.update_xaxes(tickangle=90)
-        # Eliminado height=600 para permitir que Plotly ajuste la altura de forma responsiva
         fig_presidente.update_layout(autosize=True)
 
         tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
@@ -416,6 +412,17 @@ try:
             box-sizing: border-box;
             color: #343a40;
         }}
+        /* Nuevas reglas para asegurar la responsividad de los gráficos Plotly */
+        .plotly-graph-container .js-plotly-plot {{
+            width: 100% !important;
+            height: auto !important;
+            min-width: unset !important;
+            min-height: unset !important;
+        }}
+        .plotly-graph-container .plotly .main-svg {{
+            width: 100% !important;
+            height: auto !important;
+        }}
         .plotly-graph-container .modebar-container {{
             background-color: #f8f9fa;
             border-radius: 5px;
@@ -461,7 +468,7 @@ try:
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #007bff; /* Usando el azul principal */
+            border: 3px solid #007bff;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: transform 0.2s ease-in-out;
         }}
