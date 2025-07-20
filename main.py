@@ -59,6 +59,7 @@ try:
                  color_discrete_sequence=px.colors.qualitative.D3)
     fig.update_traces(textposition='outside', textangle=0)
     fig.update_xaxes(tickangle=90)
+    # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
     fig.update_layout(autosize=True)
 
     df_total_votos = df.set_index('Candidato').sum(axis=1).reset_index(name='TotalVotos')
@@ -74,6 +75,7 @@ try:
                   opacity=0.7,
                   color_discrete_sequence=px.colors.qualitative.D3)
     fig2.update_traces(textposition='outside', textangle=0)
+    # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
     fig2.update_layout(autosize=True)
 
     # --- Generar el mapa con Folium ---
@@ -212,6 +214,7 @@ try:
                                       opacity=0.7,
                                       color_discrete_sequence=px.colors.qualitative.D3)
                 fig_locality.update_traces(textposition='outside', textangle=0)
+                # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
                 fig_locality.update_layout(autosize=True)
                 tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
                 print(f"Gráfico de {localidad_name} generado exitosamente.")
@@ -245,6 +248,7 @@ try:
                                 color_discrete_sequence=px.colors.qualitative.D3)
         fig_presidente.update_traces(textposition='outside', textangle=0)
         fig_presidente.update_xaxes(tickangle=90)
+        # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
         fig_presidente.update_layout(autosize=True)
 
         tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
@@ -461,8 +465,8 @@ try:
             flex-direction: column;
             align-items: center;
             text-align: center;
-            width: 100%; /* Permite que el item ocupe todo el ancho disponible */
-            max-width: 120px; /* Pero no más de 120px */
+            width: 100%;
+            max-width: 120px;
         }}
         .candidate-image {{
             width: 100px;
@@ -548,7 +552,23 @@ try:
         }}
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.className += " active";
-        window.dispatchEvent(new Event('resize'));
+
+        // Trigger resize for Plotly graphs in the active tab
+        // Give a small delay to ensure the tab is fully visible before relayout
+        setTimeout(() => {{
+            const activeTabContent = document.getElementById(tabName);
+            // Selecciona los divs que Plotly usa para renderizar los gráficos
+            const plotlyDivs = activeTabContent.querySelectorAll('.plotly-graph-container > div');
+            plotlyDivs.forEach(div => {{
+                // Verifica si el div es realmente un gráfico de Plotly y si Plotly está cargado
+                if (div.data && typeof Plotly !== 'undefined' && Plotly.relayout) {{
+                    Plotly.relayout(div, {{autosize: true}}); // Forzar el redimensionamiento con autosize
+                }} else {{
+                    // Fallback a un evento de redimensionamiento general si Plotly no se detecta
+                    window.dispatchEvent(new Event('resize'));
+                }}
+            }});
+        }}, 50); // Pequeño retraso para asegurar que la pestaña esté visible
     }}
 
     document.addEventListener('DOMContentLoaded', (event) => {{
