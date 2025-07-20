@@ -59,8 +59,8 @@ try:
                  color_discrete_sequence=px.colors.qualitative.D3)
     fig.update_traces(textposition='outside', textangle=0)
     fig.update_xaxes(tickangle=90)
-    # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
-    fig.update_layout(autosize=True)
+    # Incluido autosize=True y configuración de leyenda para responsividad
+    fig.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
 
     df_total_votos = df.set_index('Candidato').sum(axis=1).reset_index(name='TotalVotos')
     df_total_votos.rename(columns={0: 'Candidato'}, inplace=True)
@@ -75,8 +75,8 @@ try:
                   opacity=0.7,
                   color_discrete_sequence=px.colors.qualitative.D3)
     fig2.update_traces(textposition='outside', textangle=0)
-    # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
-    fig2.update_layout(autosize=True)
+    # Incluido autosize=True y configuración de leyenda para responsividad
+    fig2.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
 
     # --- Generar el mapa con Folium ---
     map_center = [-37.37, -70.56]
@@ -214,8 +214,8 @@ try:
                                       opacity=0.7,
                                       color_discrete_sequence=px.colors.qualitative.D3)
                 fig_locality.update_traces(textposition='outside', textangle=0)
-                # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
-                fig_locality.update_layout(autosize=True)
+                # Incluido autosize=True y configuración de leyenda para responsividad
+                fig_locality.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
                 tab1_content += f'<div class="plotly-graph-container">{pio.to_html(fig_locality, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
                 print(f"Gráfico de {localidad_name} generado exitosamente.")
             else:
@@ -248,8 +248,8 @@ try:
                                 color_discrete_sequence=px.colors.qualitative.D3)
         fig_presidente.update_traces(textposition='outside', textangle=0)
         fig_presidente.update_xaxes(tickangle=90)
-        # Incluido autosize=True de nuevo para un comportamiento responsivo óptimo
-        fig_presidente.update_layout(autosize=True)
+        # Incluido autosize=True y configuración de leyenda para responsividad
+        fig_presidente.update_layout(autosize=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
 
         tab_presidente_content = f'<div class="plotly-graph-container">{pio.to_html(fig_presidente, full_html=False, include_plotlyjs="cdn", config={"responsive": True}, auto_play=False)}</div>'
 
